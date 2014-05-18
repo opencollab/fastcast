@@ -40,11 +40,11 @@ Fastcast is easy to use:
 5. the file test.cpp could be compiled in using:
 
    ```
-   clang++ -std=c++11 -oout test/test.cpp -I. && ./out
+   clang++ -Wall -std=c++11 -oout test/test.cpp -I. && ./out
    ```
 
    or
 
    ```
-   g++ -std=c++11 -oout test/test.cpp -I. && ./out
+   g++ -Wall -std=c++11 -oout test/test.cpp -I. && ./out
    ```
