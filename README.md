@@ -9,7 +9,7 @@ Fastcast is easy to use:
 
 1. include *fastcast.hxx*
 
-2. the root class (say A) must inherit from ```*fastcast::fcast<A, uint64_t>*``` (or an other integer type)
+2. the root class (say A) must inherit from ```fastcast::fcast<A, uint64_t>``` (or an other integer type)
 
 3. each class in the hierarchy having children must typedef a *fcast_hierarchy*:
 
@@ -40,11 +40,11 @@ Fastcast is easy to use:
 5. the file test.cpp could be compiled in using:
 
    ```
-   clang++ -std=c++11 -oout test/test.cpp -I. && ./out
+   clang++ -Wall -std=c++11 -oout test/test.cpp -I. && ./out
    ```
 
    or
 
    ```
-   g++ -std=c++11 -oout test/test.cpp -I. && ./out
+   g++ -Wall -std=c++11 -oout test/test.cpp -I. && ./out
    ```
