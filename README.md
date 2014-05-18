@@ -9,7 +9,7 @@ Fastcast is easy to use:
 
 1. include *fastcast.hxx*
 
-2. the root class (say A) must inherit from ```*fastcast::fcast<A, uint64_t>*``` (or an other integer type)
+2. the root class (say A) must inherit from ```fastcast::fcast<A, uint64_t>``` (or an other integer type)
 
 3. each class in the hierarchy having children must typedef a *fcast_hierarchy*:
 
