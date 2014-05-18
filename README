@@ -28,7 +28,7 @@ struct B : public A
 {
     typedef fastcast::hierarchy<A, fastcast::children<D>> fcast_hierarchy;
 
-    B() { Fcast::set_id<B>(); }
+    B() { fastcast::fcast<A, uint32_t>::set_id<B>(); }
 };
 
 v) the file test.cpp could be compiled in using:
