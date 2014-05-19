@@ -48,13 +48,13 @@
  * A will have id 1 (because it is the root).
  * A has 3 children: B(0), C(1), D(2).
  * So the id of:
- *  - B will be 1001 (1 00 1: first 1 is to a delimiter, 00 is the position and 1 is the id of A);
- *  - C will be 1011 (1 01 1: first 1 is to a delimiter, 01 is the position and 1 is the id of A);
- *  - D will be 1101 (1 10 1: first 1 is to a delimiter, 10 is the position and 1 is the id of A).
+ *  - B will be 1001 (1 00 1: first 1 is a delimiter, 00 is the position and 1 is the id of A);
+ *  - C will be 1011 (1 01 1: first 1 is a delimiter, 01 is the position and 1 is the id of A);
+ *  - D will be 1101 (1 10 1: first 1 is a delimiter, 10 is the position and 1 is the id of A).
  * In following the same scheme, the id of:
- *  - E will be 101001 (1 0 1001: first 1 is to a delimiter, 0 is the position and 1001 is the id of B);
- *  - F will be 111001 (1 1 1001: first 1 is to a delimiter, 1 is the position and 1001 is the id of B);
- *  - G will be 101101 (1 0 1101: first 1 is to a delimiter, 0 is the position and 1101 is the id of D).
+ *  - E will be 101001 (1 0 1001: first 1 is a delimiter, 0 is the position and 1001 is the id of B);
+ *  - F will be 111001 (1 1 1001: first 1 is a delimiter, 1 is the position and 1001 is the id of B);
+ *  - G will be 101101 (1 0 1101: first 1 is a delimiter, 0 is the position and 1101 is the id of D).
  * In this case only a uint8_t is required to store the id.
  *
  * So now it is easy to check if a class is deriving from another one: just check if the derived id "finished"
