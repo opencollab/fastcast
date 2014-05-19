@@ -35,6 +35,35 @@
 #include <exception>
 #include <type_traits>
 
+/**
+ * The basic idea is to find a single uint to identify a class and to be able to easily determinate if a class
+ * B derived from A.
+ * For example, if we have a class A which have children B, C, D, B have children E and F, and D have a child G:
+ * A--B--E, F
+ *    |
+ *    C
+ *    |
+ *    D--G
+ *
+ * A will have id 1 (because it is the root).
+ * A has 3 children: B(0), C(1), D(2).
+ * So the id of:
+ *  - B will be 1001 (1 00 1: first 1 is to a delimiter, 00 is the position and 1 is the id of A);
+ *  - C will be 1011 (1 01 1: first 1 is to a delimiter, 01 is the position and 1 is the id of A);
+ *  - D will be 1101 (1 10 1: first 1 is to a delimiter, 10 is the position and 1 is the id of A).
+ * In following the same scheme, the id of:
+ *  - E will be 101001 (1 0 1001: first 1 is to a delimiter, 0 is the position and 1001 is the id of B);
+ *  - F will be 111001 (1 1 1001: first 1 is to a delimiter, 1 is the position and 1001 is the id of B);
+ *  - G will be 101101 (1 0 1101: first 1 is to a delimiter, 0 is the position and 1101 is the id of D).
+ * In this case only a uint8_t is required to store the id.
+ *
+ * So now it is easy to check if a class is deriving from another one: just check if the derived id "finished"
+ * its (supposed) parent's one.
+ * For example, E is a child of B, because B's id finished E's id but G is not a child of B because G's id didn't
+ * finish B's one.
+ *
+ */
+
 namespace fastcast
 {
     // The type used for fcast_id
@@ -51,7 +80,7 @@ namespace fastcast
                     struct children
                     {
                         template<typename U>
-                        constexpr inline static unsigned int pos()
+                        constexpr static unsigned int pos() noexcept
                             {
                                 return 0;
                             }
@@ -62,80 +91,107 @@ namespace fastcast
             struct children
             {
                 template<typename U>
-                constexpr inline static unsigned int pos()
+                constexpr static unsigned int pos() noexcept
                     {
                         return 1;
                     }
             };
 
-            constexpr inline static unsigned int number_of_bits()
+            constexpr static unsigned int number_of_bits() noexcept
                 {
                     return 0;
                 }
         };
     };
 
-    constexpr inline static unsigned int number_of_bits(unsigned int n)
+    /**
+     * @return the number of bits used to represent the argument
+     */
+    constexpr unsigned int number_of_bits(unsigned int n) noexcept
     {
         return n == 0 ? 0 : (1 + number_of_bits(n >> 1));
     }
 
+    /**
+     * @return the corrected position of a child in children list
+     */
     template<typename U, typename V>
-    constexpr inline static unsigned int corrected_pos()
+    constexpr unsigned int corrected_pos() noexcept
     {
         return (U::template pos<void>() == 0 ? 0 : (U::template pos<V>() - 1) | (1 << number_of_bits(U::template pos<void>() - 1)));
     }
 
+    /**
+     * @return the id of a child according to its position in the list of the parent's children and parent's id.
+     */
     template<typename Me>
-    constexpr inline static fcast_id_t id()
+    constexpr fcast_id_t id() noexcept
     {
         return (corrected_pos<typename Me::fcast_hierarchy::parent::fcast_hierarchy::children, Me>() << Me::fcast_hierarchy::number_of_bits()) | id<typename Me::fcast_hierarchy::parent>();
     }
 
+    // Specialization of the template function id<Me>
     template<>
-    constexpr inline fcast_id_t id<root>() { return 0; }
+    constexpr fcast_id_t id<root>() noexcept { return 0; }
 
+    // Specialization of the template function id<Me>
     template<>
-    constexpr inline fcast_id_t id<root::fcast_hierarchy::parent>() { return 0; }
+    constexpr fcast_id_t id<root::fcast_hierarchy::parent>() noexcept { return 0; }
 
+    /**
+     * @return the id of the parent
+     */
     template<typename U>
-    constexpr inline static fcast_id_t base_id()
+    constexpr fcast_id_t base_id() noexcept
     {
         return (corrected_pos<typename U::fcast_hierarchy::parent::fcast_hierarchy::children, void>() << U::fcast_hierarchy::number_of_bits()) | id<typename U::fcast_hierarchy::parent>();
     }
 
+    // Define _children struct
     template<unsigned int, typename...>
     struct _children;
 
+    // Define recursively the chidlren using a variadic template
     template<unsigned int N, typename U, typename... C>
     struct _children<N, U, C...>
     {
         typedef _children<N + 1, C...> __children__;
 
+	/**
+	 * @return the position of a child in children list
+	 */
         template<typename V>
-        constexpr inline static unsigned int pos()
+        constexpr static unsigned int pos() noexcept
             {
                 return std::is_same<U, V>::value ? N : __children__::template pos<V>();
             }
     };
 
+    // Last template used in the recursion
     template<unsigned int N, typename U>
     struct _children<N, U>
     {
+	/**
+	 * @return the position of a child in children list
+	 */
         template<typename V>
-        constexpr inline static unsigned int pos()
+        constexpr static unsigned int pos() noexcept
             {
                 return N;
             }
     };
 
+    // Define childnre struct used in the hierarchy definition
     template<typename... C>
     struct children
     {
         typedef _children<1, C...> __children__;
 
+	/**
+	 * @return the position of a child in children list
+	 */
         template<typename V>
-        constexpr inline static unsigned int pos()
+        constexpr static unsigned int pos() noexcept
             {
                 return __children__::template pos<V>();
             }
@@ -148,12 +204,13 @@ namespace fastcast
         typedef Parent parent;
         typedef Children children;
 
-        constexpr inline static unsigned int number_of_bits()
+        constexpr static unsigned int number_of_bits() noexcept
             {
                 return fastcast::number_of_bits(base_id<parent>());
             }
     };
 
+    // bad_cast exception is used when instanceof as a reference as parameter 
     class bad_cast : std::exception
     {
     public:
@@ -178,7 +235,9 @@ namespace fastcast
         template<typename V>
         inline void set_id() noexcept
             {
-                _fcast_id = fastcast::id<V>();
+		// Force _id_ to be evaluated at compile-time
+		constexpr U _id_ = fastcast::id<V>();
+                _fcast_id = _id_;
             }
 
         /**
@@ -190,15 +249,16 @@ namespace fastcast
                 // Check if V::fcast_id ended w->fcast::_fcast_id in binary representation
                 // For example, if a=1011011 and b=1011 then b is ending a.
                 // In the previous case x=a^b=1010000 and x&-x=10000
-                const fcast_id_t x = w->fcast<T, U>::_fcast_id ^ fastcast::id<V>();
-                return std::is_base_of<V, W>::value || !x || (fastcast::id<V>() < (x & ((~x) + 1)));
+		constexpr U _id_ = fastcast::id<V>();
+                const fcast_id_t x = w->fcast<T, U>::_fcast_id ^ _id_;
+                return std::is_base_of<V, W>::value || !x || (_id_ < (x & ((~x) + 1)));
             }
 
         /**
          * @return true if w is an instance of V
          */
         template<typename V, typename W>
-        constexpr inline static bool instanceof(W & w) noexcept
+        inline static bool instanceof(W & w) noexcept
             {
 		return instanceof<V, W>(&w);
             }
@@ -207,7 +267,7 @@ namespace fastcast
          * @return true if the underlying type of w is V
          */
         template<typename V, typename W>
-        constexpr inline static bool same(W * w) noexcept
+        constexpr static bool same(W * w) noexcept
             {
                 return fastcast::id<V>() == w->fcast<T, U>::_fcast_id;
             }
@@ -216,7 +276,7 @@ namespace fastcast
          * @return true if the underlying type of w is V
          */
         template<typename V, typename W>
-        constexpr inline static bool same(W & w) noexcept
+        constexpr static bool same(W & w) noexcept
             {
                 return same<V, W>(&w);
             }
