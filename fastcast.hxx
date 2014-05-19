@@ -157,9 +157,9 @@ namespace fastcast
     {
         typedef _children<N + 1, C...> __children__;
 
-	/**
-	 * @return the position of a child in children list
-	 */
+        /**
+         * @return the position of a child in children list
+         */
         template<typename V>
         constexpr static unsigned int pos() noexcept
             {
@@ -171,9 +171,9 @@ namespace fastcast
     template<unsigned int N, typename U>
     struct _children<N, U>
     {
-	/**
-	 * @return the position of a child in children list
-	 */
+        /**
+         * @return the position of a child in children list
+         */
         template<typename V>
         constexpr static unsigned int pos() noexcept
             {
@@ -187,9 +187,9 @@ namespace fastcast
     {
         typedef _children<1, C...> __children__;
 
-	/**
-	 * @return the position of a child in children list
-	 */
+        /**
+         * @return the position of a child in children list
+         */
         template<typename V>
         constexpr static unsigned int pos() noexcept
             {
@@ -210,17 +210,17 @@ namespace fastcast
             }
     };
 
-    // bad_cast exception is used when instanceof as a reference as parameter 
+    // bad_cast exception is used when instanceof as a reference as parameter
     class bad_cast : std::exception
     {
     public:
-	
-	bad_cast() : std::exception() { }
 
-	virtual const char * what() const noexcept
-	    {
-		return "Bad cast";
-	    }
+        bad_cast() : std::exception() { }
+
+        virtual const char * what() const noexcept
+            {
+                return "Bad cast";
+            }
     };
 
     // To be derivated to have a fcast_id
@@ -229,14 +229,14 @@ namespace fastcast
     {
         U _fcast_id;
 
-	/**
-	 * Set the _fcast_id field
-	 */
+        /**
+         * Set the _fcast_id field
+         */
         template<typename V>
         inline void set_id() noexcept
             {
-		// Force _id_ to be evaluated at compile-time
-		constexpr U _id_ = fastcast::id<V>();
+                // Force _id_ to be evaluated at compile-time
+                constexpr U _id_ = fastcast::id<V>();
                 _fcast_id = _id_;
             }
 
@@ -249,7 +249,7 @@ namespace fastcast
                 // Check if V::fcast_id ended w->fcast::_fcast_id in binary representation
                 // For example, if a=1011011 and b=1011 then b is ending a.
                 // In the previous case x=a^b=1010000 and x&-x=10000
-		constexpr U _id_ = fastcast::id<V>();
+                constexpr U _id_ = fastcast::id<V>();
                 const fcast_id_t x = w->fcast<T, U>::_fcast_id ^ _id_;
                 return std::is_base_of<V, W>::value || !x || (_id_ < (x & ((~x) + 1)));
             }
@@ -260,23 +260,24 @@ namespace fastcast
         template<typename V, typename W>
         inline static bool instanceof(W & w) noexcept
             {
-		return instanceof<V, W>(&w);
+                return instanceof<V, W>(&w);
             }
 
         /**
          * @return true if the underlying type of w is V
          */
         template<typename V, typename W>
-        constexpr static bool same(W * w) noexcept
+        inline static bool same(W * w) noexcept
             {
-                return fastcast::id<V>() == w->fcast<T, U>::_fcast_id;
+                constexpr U _id_ = fastcast::id<V>();
+                return  _id_ == w->fcast<T, U>::_fcast_id;
             }
 
         /**
          * @return true if the underlying type of w is V
          */
         template<typename V, typename W>
-        constexpr static bool same(W & w) noexcept
+        inline static bool same(W & w) noexcept
             {
                 return same<V, W>(&w);
             }
@@ -289,6 +290,15 @@ namespace fastcast
         inline static V * cast(W * w) noexcept
             {
                 return instanceof<V>(w) ? static_cast<V *>(w) : nullptr;
+            }
+
+        /**
+         * Just an alias for static_cast
+         */
+        template<typename V, typename W>
+        inline static V & cast_unchecked(W * w)
+            {
+                return static_cast<V *>(w);
             }
 
         /**
