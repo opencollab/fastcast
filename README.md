@@ -26,7 +26,7 @@ Fastcast is easy to use:
    typedef fastcast::hierarchy<D> fcast_hierarchy;
    ```
 
-4. Each ctor must set the identifier for the class:
+4. Each constructor must set the identifier for the class:
 
    ```
    struct B : public A

@@ -251,6 +251,7 @@ namespace fastcast
                 // In the previous case x=a^b=1010000 and x&-x=10000
                 constexpr U _id_ = fastcast::id<V>();
                 const fcast_id_t x = w->fcast<T, U>::_fcast_id ^ _id_;
+
                 return std::is_base_of<V, W>::value || !x || (_id_ < (x & ((~x) + 1)));
             }
 
