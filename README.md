@@ -2,6 +2,7 @@
 
 Fastcast provides a fast alternative to dynamic_cast.
 Each class in the hierarchy has an integer identifier. This identifier is built to make instanceof operation very fast.
+Cross casts are supported.
 
 # Usage:
 
@@ -26,7 +27,7 @@ Fastcast is easy to use:
    typedef fastcast::hierarchy<D> fcast_hierarchy;
    ```
 
-4. Each constructor must set the identifier for the class:
+4. Each constructor must set the identifier for the class (have a look at test/test.cpp):
 
    ```
    struct B : public A
@@ -37,7 +38,22 @@ Fastcast is easy to use:
    };
    ```
 
-5. the file test.cpp could be compiled in using:
+5. Cross casts are possible in using fastcast::parents (have a look at test/test_cross.cpp):
+
+   ```
+   struct G : public C, public E
+   {
+       typedef fastcast::hierarchy<fastcast::parents<C, E>, fastcast::children<H>> fcast_hierarchy;
+
+       G()
+           {
+               FcastA::set_id<G>();
+               FcastD::set_id<G>();
+           }
+   };
+   ```
+
+6. the file test.cpp could be compiled in using:
 
    ```
    clang++ -Wall -std=c++11 -oout test/test.cpp -I. && ./out

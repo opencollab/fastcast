@@ -97,11 +97,57 @@ namespace fastcast
                     }
             };
 
+            template<typename T>
             constexpr static unsigned int number_of_bits() noexcept
                 {
                     return 0;
                 }
         };
+    };
+
+    // Define parent struct
+    template<typename...>
+    struct parents;
+
+    template<typename U, typename...P>
+    struct parents<U, P...>
+    {
+        typedef U type;
+        typedef parents<P...> __parents__;
+
+        // it is choosen when U derives from V
+        template<typename V>
+        static typename std::decay<decltype(static_cast<U&&>(true ? std::declval<U>() : std::declval<V>()))>::type _fcast_test_(int);
+
+        // else...
+        template<typename V>
+        static typename std::decay<decltype(__parents__::template _fcast_test_<V>(0))>::type _fcast_test_(char);
+    };
+
+    // Terminal
+    template<typename U>
+    struct parents<U>
+    {
+        typedef U type;
+
+        template<typename V>
+        static U _fcast_test_(int);
+    };
+
+    // U is something like parent<...> and P is a base class for one of the parent's args
+    // type will be the corresponding arg
+    template<typename P, typename U>
+    struct _get_parent
+    {
+        // it is choosen when V has a function _fcast_test_, i.e. when V is a parent struct
+        template<typename V>
+        static typename std::decay<decltype(V::template _fcast_test_<P>(0))>::type _fcast_test_(int);
+
+        // else...
+        template<typename V>
+        static V _fcast_test_(char);
+
+        typedef typename std::decay<decltype(_fcast_test_<U>(0))>::type type;
     };
 
     /**
@@ -121,30 +167,35 @@ namespace fastcast
         return (U::template pos<void>() == 0 ? 0 : (U::template pos<V>() - 1) | (1 << number_of_bits(U::template pos<void>() - 1)));
     }
 
-    /**
-     * @return the id of a child according to its position in the list of the parent's children and parent's id.
-     */
-    template<typename Me>
-    constexpr fcast_id_t id() noexcept
+    // The id of a child according to its position in the list of the parent's children
+    // and parent's id
+    template<typename T, typename Me>
+    struct _fcast_id_
     {
-        return (corrected_pos<typename Me::fcast_hierarchy::parent::fcast_hierarchy::children, Me>() << Me::fcast_hierarchy::number_of_bits()) | id<typename Me::fcast_hierarchy::parent>();
-    }
+        constexpr static fcast_id_t id = (corrected_pos<typename _get_parent<T, typename Me::fcast_hierarchy::parent>::type::fcast_hierarchy::children, Me>() << Me::fcast_hierarchy::template number_of_bits<T>()) | _fcast_id_<T, typename _get_parent<T, typename Me::fcast_hierarchy::parent>::type>::id;
+    };
 
-    // Specialization of the template function id<Me>
-    template<>
-    constexpr fcast_id_t id<root>() noexcept { return 0; }
+    // Partial specialization of the template function _fcast_id_<T, Me>
+    template<typename T>
+    struct _fcast_id_<T, root>
+    {
+        constexpr static fcast_id_t id = 0;
+    };
 
-    // Specialization of the template function id<Me>
-    template<>
-    constexpr fcast_id_t id<root::fcast_hierarchy::parent>() noexcept { return 0; }
+    // Partial specialization of the template function _fcast_id_<T, Me>
+    template<typename T>
+    struct _fcast_id_<T, root::fcast_hierarchy::parent>
+    {
+        constexpr static fcast_id_t id = 0;
+    };
 
     /**
      * @return the id of the parent
      */
-    template<typename U>
+    template<typename T, typename U>
     constexpr fcast_id_t base_id() noexcept
     {
-        return (corrected_pos<typename U::fcast_hierarchy::parent::fcast_hierarchy::children, void>() << U::fcast_hierarchy::number_of_bits()) | id<typename U::fcast_hierarchy::parent>();
+        return (corrected_pos<typename _get_parent<T, typename U::fcast_hierarchy::parent>::type::fcast_hierarchy::children, void>() << U::fcast_hierarchy::template number_of_bits<T>()) | _fcast_id_<T, typename _get_parent<T, typename U::fcast_hierarchy::parent>::type>::id;
     }
 
     // Define _children struct
@@ -181,7 +232,7 @@ namespace fastcast
             }
     };
 
-    // Define childnre struct used in the hierarchy definition
+    // Define children struct used in the hierarchy definition
     template<typename... C>
     struct children
     {
@@ -204,9 +255,10 @@ namespace fastcast
         typedef Parent parent;
         typedef Children children;
 
+        template<typename T>
         constexpr static unsigned int number_of_bits() noexcept
             {
-                return fastcast::number_of_bits(base_id<parent>());
+                return fastcast::number_of_bits(base_id<T, typename _get_parent<T, parent>::type>());
             }
     };
 
@@ -219,7 +271,7 @@ namespace fastcast
 
         virtual const char * what() const noexcept
             {
-                return "Bad cast";
+                return "Bad fast cast";
             }
     };
 
@@ -235,9 +287,7 @@ namespace fastcast
         template<typename V>
         inline void set_id() noexcept
             {
-                // Force _id_ to be evaluated at compile-time
-                constexpr U _id_ = fastcast::id<V>();
-                _fcast_id = _id_;
+                _fcast_id = fastcast::_fcast_id_<fcast<T, U>, V>::id;
             }
 
         /**
@@ -249,7 +299,7 @@ namespace fastcast
                 // Check if V::fcast_id ended w->fcast::_fcast_id in binary representation
                 // For example, if a=1011011 and b=1011 then b is ending a.
                 // In the previous case x=a^b=1010000 and x&-x=10000
-                constexpr U _id_ = fastcast::id<V>();
+                constexpr U _id_ = fastcast::_fcast_id_<fcast<T, U>, V>::id;
                 const fcast_id_t x = w->fcast<T, U>::_fcast_id ^ _id_;
 
                 return std::is_base_of<V, W>::value || !x || (_id_ < (x & ((~x) + 1)));
@@ -270,8 +320,7 @@ namespace fastcast
         template<typename V, typename W>
         inline static bool same(W * w) noexcept
             {
-                constexpr U _id_ = fastcast::id<V>();
-                return  _id_ == w->fcast<T, U>::_fcast_id;
+                return fastcast::_fcast_id_<fcast<T, U>, V>::id == w->fcast<T, U>::_fcast_id;
             }
 
         /**
